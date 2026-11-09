@@ -21,7 +21,7 @@
 - **Built-in anti-slop review.** Every kit is graded CLEAN / MILD / SLOPPY / TERMINAL against measurable "made by AI" tells: unbranded violet, neon, blown highlights, no focal point, the same centred template on every post, and copy like *"Elevate your journey"*, *"not X, it's Y"*, em-dashes and emoji. Claude fixes these before you ever see the result.
 - **Claude stays in the loop.** Every render ships with an editable JSON spec and a contact sheet. Claude looks at the result, edits the spec and re-renders, the same way a designer iterates.
 - **Fast and local.** A full kit (6 stills and 2 reels) takes about 20 s on a laptop GPU. No cloud, no API keys, no telemetry.
-- **Clean, original code.** A ~500-line WebGL2 engine written from scratch under the MIT licence.
+- **Clean, original code.** A ~450-line WebGL2 engine written from scratch under the MIT licence.
 
 ## Install
 
