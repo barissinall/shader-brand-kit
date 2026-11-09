@@ -1,0 +1,11 @@
+{
+  "name": "shader-brand-kit",
+  "version": "2.0.0",
+  "private": true,
+  "description": "One logo in, a premium brand kit out: liquid chrome, thick glass and silk-gradient posts, stories and reels rendered on your GPU.",
+  "type": "module",
+  "bin": { "brandkit": "scripts/brandkit.mjs" },
+  "dependencies": { "puppeteer-core": "24.43.1" },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

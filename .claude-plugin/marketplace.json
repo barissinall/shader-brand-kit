@@ -1,0 +1,14 @@
+{
+  "name": "barissinall-plugins",
+  "description": "Claude Code plugins by barissinall: creative and brand tooling.",
+  "owner": {
+    "name": "barissinall"
+  },
+  "plugins": [
+    {
+      "name": "shader-brand-kit",
+      "source": "./",
+      "description": "One logo in, a premium brand kit out: liquid chrome, gold, thick glass and silk-gradient posts, stories and reels rendered on your GPU."
+    }
+  ]
+}

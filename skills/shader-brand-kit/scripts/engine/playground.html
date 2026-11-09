@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shader Brand Kit · Playground</title>
+<style>
+  :root{--bg:#0c0c0d;--panel:#151517;--line:#262629;--ink:#e9e9ea;--mute:#8b8b90;--acc:#ff6a3d}
+  *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.35 Inter,system-ui,sans-serif}
+  .app{display:grid;grid-template-columns:1fr 340px;height:100%}
+  .stage{display:flex;align-items:center;justify-content:center;padding:24px;position:relative;min-width:0}
+  #c{max-width:100%;max-height:calc(100vh - 90px);box-shadow:0 20px 60px rgba(0,0,0,.6);border-radius:6px;background:#000}
+  .drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(255,106,61,.12);border:2px dashed var(--acc);font-size:18px}
+  .bar{position:absolute;left:24px;right:24px;bottom:14px;display:flex;gap:10px;align-items:center;color:var(--mute)}
+  .bar input[type=range]{flex:1}
+  aside{background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:14px 16px 40px}
+  h1{font-size:15px;margin:2px 0 12px} h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:18px 0 8px;border-top:1px solid var(--line);padding-top:14px}
+  label.row{display:grid;grid-template-columns:96px 1fr 44px;gap:8px;align-items:center;margin:5px 0}
+  label.row span.v{color:var(--mute);text-align:right;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--acc)} select,input[type=text],textarea{width:100%;background:#0f0f10;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px}
+  textarea{resize:vertical;min-height:34px;font:inherit}
+  .btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  button,.file{background:#232326;color:var(--ink);border:1px solid #333;border-radius:7px;padding:7px 10px;cursor:pointer;font:inherit}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#140700;font-weight:600}
+  .file input{display:none} .hint{color:var(--mute);font-size:12px;margin:6px 0}
+  .looks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  @media (max-width:820px){.app{grid-template-columns:1fr;grid-template-rows:60vh 1fr}aside{border-left:0;border-top:1px solid var(--line)}}
+</style></head>
+<body>
+<div class="app">
+  <div class="stage" id="stage"><canvas id="c"></canvas><div class="drop" id="drop">Drop a logo (SVG / PNG)</div>
+    <div class="bar"><button id="play">Pause</button><input id="time" type="range" min="0" max="6" step="0.01" value="0"><span id="tlabel">0.0s</span></div></div>
+  <aside>
+    <h1>Shader Brand Kit</h1>
+    <div class="btns">
+      <label class="file">Logo…<input id="logoIn" type="file" accept="image/*"></label>
+      <label class="file">Photo…<input id="photoIn" type="file" accept="image/*"></label>
+      <button id="snap">PNG</button><button id="export" class="primary">Export spec</button>
+    </div>
+    <p class="hint">Drag a logo onto the canvas. Export saves a JSON spec: render it with <code>node brandkit.mjs --spec file.json</code>.</p>
+    <h2>Look</h2><div class="looks" id="looks"></div>
+    <div id="controls"></div>
+  </aside>
+</div>
+<script>window.BK_FONT_BASE = 'fonts/';</script>
+<script src="engine.js"></script>
+<script src="init.js" onerror="window.BK_INIT=window.BK_INIT||{}"></script>
+<script>
+(async () => {
+  const INIT = window.BK_INIT || {};
+  const kit = new BrandKit(document.getElementById('c'));
+  const DEFAULT_LOGO = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 200 200"><path fill="#ff6a3d" fill-rule="evenodd" d="M100 18a82 82 0 1 1 0 164a82 82 0 1 1 0-164zm0 34a48 48 0 1 0 0 96a48 48 0 1 0 0-96z"/><circle cx="100" cy="100" r="17" fill="#ff6a3d"/></svg>');
+  const state = { logo: INIT.logo || DEFAULT_LOGO, photo: null };
+
+  // Presets mirror looks.mjs closely (kept small on purpose; the CLI holds the art-directed versions).
+  const LOOKS = {
+    chrome: () => ({ background: { type: 'studio', colors: ['#151515', '#020202', '#ffffff'], spot: .09 }, material: { type: 'metal', finish: 'chrome', env: 'studio', envRotate: -8, bevel: .5, dome: .35, liquid: .1, dispersion: .05, shadow: .4 } }),
+    gold: () => ({ background: { type: 'studio', colors: ['#1d130b', '#050302', '#ffb36b'], spot: .1 }, material: { type: 'metal', finish: 'gold', env: 'warm', bevel: .55, dome: .3, liquid: .08, dispersion: .02, shadow: .45 } }),
+    molten: () => ({ background: { type: 'silk', colors: ['#0d0503', '#3a1206', '#ff6a3d', '#3a1206'], scale: .9, angle: 30, sheen: .2 }, material: { type: 'metal', finish: 'chrome', env: 'studio', envTint: '#ff6a3d', envTintAmount: .75, bevel: .5, dome: .35, liquid: .14, shadow: .3 } }),
+    glass: () => ({ background: state.photo ? { type: 'photo', src: state.photo } : { type: 'silk', colors: ['#2a0d05', '#ff6a3d', '#ff3d6e', '#ffd9c8'], scale: .9, angle: -25, sheen: .3 }, material: { type: 'glass', bevel: .8, refraction: .45, magnify: 1.18, dispersion: .025, shadow: .2, caustic: .35 } }),
+    frost: () => ({ background: { type: 'silk', colors: ['#ff3d6e', '#ff6a3d', '#2a0d05', '#ff6a3d'], scale: .85, angle: 40, sheen: .3 }, material: { type: 'glass', bevel: .9, profile: .7, refraction: .5, magnify: 1.05, frost: .55, milk: .22, shadow: .25, caustic: .2 } }),
+    silk: () => ({ background: { type: 'silk', colors: ['#0d0503', '#3a1206', '#ff6a3d', '#ff3d6e'], scale: .8, angle: 60, sheen: .25 }, material: { type: 'metal', finish: 'chrome', env: 'studio', bevel: .6, dome: .2 } })
+  };
+  let spec = { format: 'post', logo: { x: .5, y: .45, size: .58 }, text: [{ text: INIT.text || 'Your line here.', x: .5, y: .86, size: .056, weight: 800, color: '#ffffff', align: 'center', tracking: -.02 }], grain: .045, vignette: .2, ...LOOKS.chrome() };
+
+  const G = BrandKit.getPath, S = BrandKit.setPath;
+  const CONTROLS = [
+    ['Frame', [['format', 'select', ['post', 'square', 'story', 'wide']], ['grain', 0, .15, .005], ['vignette', 0, .8, .01]]],
+    ['Logo', [['logo.size', .1, .95, .01], ['logo.x', 0, 1, .005], ['logo.y', 0, 1, .005], ['logo.rotate', -45, 45, .5], ['logo.invert', 'check']]],
+    ['Material', [['material.type', 'select', ['metal', 'glass', 'none']], ['material.finish', 'select', ['chrome', 'silver', 'gold', 'rose', 'copper', 'bronze', 'black'], 'metal'],
+      ['material.env', 'select', ['studio', 'horizon', 'warm']], ['material.envRotate', -180, 180, 1], ['material.envSpin', -60, 60, 1],
+      ['material.bevel', .05, 1, .01], ['material.depth', .2, 2, .01], ['material.profile', 0, 1, .01], ['material.dome', 0, 1, .01],
+      ['material.liquid', 0, .6, .01], ['material.speed', 0, 2, .01], ['material.dispersion', 0, .3, .005],
+      ['material.envTint', 'color', null, 'metal'], ['material.envTintAmount', 0, 1, .01, 'metal'],
+      ['material.refraction', 0, 1.5, .01, 'glass'], ['material.magnify', .8, 2, .01, 'glass'], ['material.frost', 0, 1, .01, 'glass'], ['material.milk', 0, 1, .01, 'glass'],
+      ['material.tint', 'color', null, 'glass'], ['material.tintAmount', 0, 1, .01, 'glass'], ['material.reflect', 0, 1.5, .01, 'glass'], ['material.specular', 0, 2, .01, 'glass'], ['material.caustic', 0, 1, .01, 'glass'],
+      ['material.shadow', 0, 1, .01], ['material.shadowSoft', .2, 3, .01]]],
+    ['Background', [['background.type', 'select', ['studio', 'silk', 'solid', 'photo']], ['background.colors.0', 'color'], ['background.colors.1', 'color'], ['background.colors.2', 'color'], ['background.colors.3', 'color', null, 'silk'],
+      ['background.scale', .3, 3, .01, 'silk'], ['background.speed', 0, 1.5, .01, 'silk'], ['background.angle', -180, 180, 1, 'silk'], ['background.warp', 0, 3, .01, 'silk'], ['background.sheen', 0, 1, .01, 'silk'], ['background.bump', 0, 3, .01, 'silk'],
+      ['background.spot', 0, .5, .005, 'studio'], ['background.zoom', .5, 3, .01, 'photo'], ['background.dim', 0, 1, .01, 'photo'], ['background.blur', 0, 6, .05, 'photo'], ['background.shade', 0, 1, .01, 'photo']]],
+    ['Text', [['text.0.text', 'textarea'], ['text.0.size', .02, .2, .001], ['text.0.y', 0, 1, .005], ['text.0.weight', 300, 900, 100], ['text.0.color', 'color'], ['text.0.layer', 'select', ['over', 'under']]]]
+  ];
+  const fmt = v => typeof v === 'number' ? (Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(2)) : '';
+  function buildControls() {
+    const root = document.getElementById('controls'); root.innerHTML = '';
+    for (const [title, items] of CONTROLS) {
+      const h = document.createElement('h2'); h.textContent = title; root.appendChild(h);
+      for (const [path, a, b, c, only] of items) {
+        const kind = typeof a === 'number' ? 'range' : a, cond = typeof a === 'number' ? only : (kind === 'select' ? c : c);
+        const mt = spec.material.type, bt = spec.background.type;
+        if (cond && cond !== mt && cond !== bt) continue;
+        if (path.startsWith('text.0') && !spec.text[0]) continue;
+        const row = document.createElement('label'); row.className = 'row'; const name = path.split('.').slice(-1)[0].replace(/^\d$/, m => path.split('.').slice(-2)[0] + ' ' + m);
+        row.innerHTML = `<span>${name}</span>`; let input, val = G(spec, path);
+        if (val === undefined) { const typ = path.startsWith('material') ? spec.material.type : path.startsWith('background') ? spec.background.type : null;
+          const d = path.startsWith('material') ? BrandKit.MAT_DEFAULTS[typ] : path.startsWith('background') ? BrandKit.BG_DEFAULTS[typ] : null;
+          if (d) val = G(d, path.split('.').slice(1).join('.')); }
+        if (kind === 'range') { input = document.createElement('input'); Object.assign(input, { type: 'range', min: a, max: b, step: c, value: val ?? (a < 0 && b > 0 ? 0 : a) }); }
+        else if (kind === 'select') { input = document.createElement('select'); b.forEach(o => input.add(new Option(o, o))); input.value = val ?? b[0]; }
+        else if (kind === 'color') { input = document.createElement('input'); input.type = 'color'; input.value = /^#[0-9a-f]{6}$/i.test(val || '') ? val : '#888888'; }
+        else if (kind === 'check') { input = document.createElement('input'); input.type = 'checkbox'; input.checked = !!val; }
+        else { input = document.createElement('textarea'); input.value = val ?? ''; }
+        const out = document.createElement('span'); out.className = 'v'; out.textContent = kind === 'range' ? fmt(+input.value) : '';
+        input.addEventListener('input', () => {
+          const v = kind === 'range' ? +input.value : kind === 'check' ? input.checked : input.value; out.textContent = kind === 'range' ? fmt(v) : '';
+          if (path === 'material.type') spec.material = { type: v }; else if (path === 'background.type') spec.background = Object.assign({}, BrandKit.BG_DEFAULTS[v], { type: v, colors: spec.background.colors, src: state.photo });
+          else S(spec, path, v);
+          if (/\.type$|^format$/.test(path)) buildControls(); reload();
+        });
+        row.appendChild(input); row.appendChild(out); root.appendChild(row);
+      }
+    }
+  }
+  const looksEl = document.getElementById('looks');
+  for (const k of Object.keys(LOOKS)) { const b = document.createElement('button'); b.textContent = k;
+    b.onclick = () => { Object.assign(spec, LOOKS[k]()); buildControls(); reload(); }; looksEl.appendChild(b); }
+
+  let busy = false, again = false;
+  async function reload() { if (busy) { again = true; return; } busy = true;
+    try { const s = JSON.parse(JSON.stringify(spec)); s.logo.src = state.logo; if (s.background.type === 'photo') { if (!state.photo) s.background = { type: 'studio' }; else s.background.src = state.photo; }
+      await kit.load(s); } catch (e) { console.error(e); }
+    busy = false; if (again) { again = false; reload(); } }
+
+  // time
+  let playing = true, t = 0, last = performance.now(); const time = document.getElementById('time'), tl = document.getElementById('tlabel');
+  document.getElementById('play').onclick = e => { playing = !playing; e.target.textContent = playing ? 'Pause' : 'Play'; };
+  time.oninput = () => { t = +time.value; };
+  (function loop(now) { const dt = (now - last) / 1000; last = now; if (playing) { t = (t + dt) % 6; time.value = t; }
+    tl.textContent = t.toFixed(1) + 's'; if (kit.spec) kit.frame(t + .001); requestAnimationFrame(loop); })(performance.now());
+
+  // files
+  const readFile = f => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
+  document.getElementById('logoIn').onchange = async e => { if (e.target.files[0]) { state.logo = await readFile(e.target.files[0]); state.logoName = e.target.files[0].name; reload(); } };
+  document.getElementById('photoIn').onchange = async e => { if (e.target.files[0]) { state.photo = await readFile(e.target.files[0]); state.photoName = e.target.files[0].name; spec.background = Object.assign({}, BrandKit.BG_DEFAULTS.photo, { type: 'photo' }); buildControls(); reload(); } };
+  const stage = document.getElementById('stage'), drop = document.getElementById('drop');
+  stage.addEventListener('dragover', e => { e.preventDefault(); drop.style.display = 'flex'; });
+  stage.addEventListener('dragleave', () => drop.style.display = 'none');
+  stage.addEventListener('drop', async e => { e.preventDefault(); drop.style.display = 'none'; const f = e.dataTransfer.files[0]; if (f) { state.logo = await readFile(f); state.logoName = f.name; reload(); } });
+
+  const download = (name, href) => { const a = document.createElement('a'); a.href = href; a.download = name; a.click(); };
+  document.getElementById('snap').onclick = () => download('brandkit.png', kit.snap());
+  document.getElementById('export').onclick = () => {
+    const s = JSON.parse(JSON.stringify(spec)); s.logo.src = state.logoName || 'logo.svg'; if (s.background.type === 'photo') s.background.src = state.photoName || 'photo.jpg';
+    download('brandkit-spec.json', 'data:application/json,' + encodeURIComponent(JSON.stringify(s, null, 2)));
+  };
+
+  if (INIT.colors && INIT.colors[0]) spec.material.envTint = INIT.colors[0];
+  buildControls(); reload();
+})();
+</script>
+</body></html>

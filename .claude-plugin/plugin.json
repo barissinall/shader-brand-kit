@@ -1,0 +1,10 @@
+{
+  "name": "shader-brand-kit",
+  "version": "2.0.0",
+  "description": "One logo in, a premium brand kit out: liquid chrome, gold, thick glass and silk-gradient posts, stories and reels rendered on your GPU.",
+  "author": { "name": "barissinall", "url": "https://github.com/barissinall" },
+  "homepage": "https://github.com/barissinall/shader-brand-kit",
+  "repository": "https://github.com/barissinall/shader-brand-kit",
+  "license": "MIT",
+  "keywords": ["brand", "logo", "chrome", "liquid-glass", "shader", "webgl2", "instagram", "reels", "motion"]
+}
